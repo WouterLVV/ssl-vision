@@ -1,4 +1,5 @@
 project(ssl-vision)
+set(CMAKE_CXX_STANDARD 11)
 set(USE_QT5 FALSE CACHE BOOL "Use Qt5 instead of Qt4")
 if(USE_QT5)
 	cmake_minimum_required(VERSION 2.8.9)
@@ -46,6 +47,7 @@ if(USE_QT5)
 	find_package(Qt5Widgets REQUIRED)
 	#find_package(Qt5Network REQUIRED)
 	find_package(Qt5OpenGL REQUIRED)
+    find_package(Qt5Gui REQUIRED)
 	# replaced by automoc
 	macro(qt4_wrap_cpp VARNAME)
 		set(${VARNAME} "")
@@ -144,7 +146,7 @@ set (SRCS
 	src/app/plugins/plugin_visualize.cpp
 	src/app/plugins/plugin_dvr.cpp
 	src/app/plugins/visionplugin.cpp
-
+	src/app/plugins/plugin_stats.cpp
 	src/app/stacks/multistack_robocup_ssl.cpp
 	src/app/stacks/multivisionstack.cpp
 	src/app/stacks/stack_robocup_ssl.cpp
@@ -170,7 +172,7 @@ qt4_wrap_cpp (MOC_SRCS
 	src/app/plugins/plugin_legacypublishgeometry.h
 	src/app/plugins/visionplugin.h
 	src/app/plugins/plugin_colorcalib.h
-
+	src/app/plugins/plugin_stats.h
 	src/app/stacks/multistack_robocup_ssl.h
 
 	${OPTIONAL_HEADERS}

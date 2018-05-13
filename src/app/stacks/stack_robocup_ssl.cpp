@@ -76,6 +76,8 @@ StackRoboCupSSL::StackRoboCupSSL(
 
   stack.push_back(new PluginDetectBalls(_fb,lut_yuv,*camera_parameters,*global_field,global_ball_settings));
 
+  stack.push_back(new PluginStats(_fb));
+
   stack.push_back(new PluginSSLNetworkOutput(
       _fb,
       _ds_udp_server_new,

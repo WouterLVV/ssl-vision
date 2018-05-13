@@ -19,6 +19,11 @@ message SSL_DetectionRobot {
   required float  pixel_x     =  6;
   required float  pixel_y     =  7;
   optional float  height      =  8;
+  repeated uint32 x1s         =  9;
+  repeated uint32 x2s         = 10;
+  repeated uint32 y1s         = 11;
+  repeated uint32 y2s         = 12;
+  repeated uint32 clrs        = 13;
 }
 
 message SSL_DetectionFrame {

@@ -24,6 +24,7 @@
 #include <visionplugin.h>
 #include "lut3d.h"
 #include "cmvision_threshold.h"
+#include <VarNotifier.h>
 
 /**
 	@author Stefan Zickler
@@ -32,6 +33,11 @@ class PluginColorThreshold : public VisionPlugin
 {
 protected:
   YUVLUT * lut;
+
+    VarNotifier _notifier;
+    VarList * _settings;
+
+    unsigned int thread_count=1;
 public:
     PluginColorThreshold(FrameBuffer * _buffer, YUVLUT * _lut);
 

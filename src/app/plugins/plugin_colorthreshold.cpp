@@ -23,7 +23,14 @@
 PluginColorThreshold::PluginColorThreshold(FrameBuffer * _buffer, YUVLUT * _lut)
  : VisionPlugin(_buffer)
 {
+
+
   lut=_lut;
+
+  _settings = new VarList("Thresholding");
+  _settings->addChild(new VarInt("Threads", 1, 1, 128));
+
+  _notifier.addRecursive(_settings);
 }
 
 
@@ -70,9 +77,10 @@ ProcessResult PluginColorThreshold::process(FrameData * data, RenderOptions * op
 }
 
 VarList * PluginColorThreshold::getSettings() {
-  return 0;
+  return _settings;
 }
 
 string PluginColorThreshold::getName() {
   return "Segmentation";
 }
+

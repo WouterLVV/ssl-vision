@@ -148,7 +148,7 @@ void RegionProcessing::connectComponents(CMVision::RunList * runlist)
           while(j != map[j].parent) j = map[j].parent;
 
           // union and compress paths; use smaller of two possible
-          // representative indicies to preserve DAG property
+          // representative indices to preserve DAG property
           if(i < j){
             map[j].parent = i;
             map[l1].parent = map[l2].parent = r1.parent = r2.parent = i;

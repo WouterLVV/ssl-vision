@@ -483,6 +483,9 @@ void TeamDetector::findRobotsByModel(::google::protobuf::RepeatedPtrField< ::SSL
         }
 
         if (model.findPattern(res,markers,num_markers,_pattern_fit_params,_camera_params)) {
+
+
+
               robot=addRobot(robots,res.conf,_max_robots*2);
               if (robot!=0) {
                 //setup robot:
@@ -493,6 +496,14 @@ void TeamDetector::findRobotsByModel(::google::protobuf::RepeatedPtrField< ::SSL
                 robot->set_pixel_x(reg->cen_x);
                 robot->set_pixel_y(reg->cen_y);
                 robot->set_height(cen.height);
+                  for (int i = 0; i < num_markers; i++) {
+                    auto region = markers[i].reg;
+                      robot->add_x1s(region->x1);
+                      robot->add_x2s(region->x2);
+                      robot->add_y1s(region->y1);
+                      robot->add_y2s(region->y2);
+                      robot->add_clrs(region->color.v);
+                  }
               }
         }
       }
