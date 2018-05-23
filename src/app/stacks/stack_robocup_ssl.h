@@ -43,6 +43,7 @@
 #include "robocup_ssl_server.h"
 
 #include "plugin_stats.h"
+#include "PluginAlternateColorDetection.h"
 
 #ifdef OPENCV
 #include "plugin_neuralcolorcalib.h"
