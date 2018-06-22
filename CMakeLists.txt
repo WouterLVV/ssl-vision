@@ -111,6 +111,8 @@ else()
   message(WARNING "OpenCV NOT found => Neural Calibration not available")
 endif()
 
+find_package( OpenCV 3 REQUIRED HINTS /usr/share/opencv)
+
 include_directories(${PROJECT_SOURCE_DIR}/src/app)
 include_directories(${PROJECT_SOURCE_DIR}/src/app/gui)
 include_directories(${PROJECT_SOURCE_DIR}/src/app/plugins)
@@ -147,6 +149,7 @@ set (SRCS
 	src/app/plugins/plugin_dvr.cpp
 	src/app/plugins/visionplugin.cpp
 	src/app/plugins/plugin_stats.cpp
+	src/app/plugins/PluginAlternateColorDetection.cpp
 	src/app/stacks/multistack_robocup_ssl.cpp
 	src/app/stacks/multivisionstack.cpp
 	src/app/stacks/stack_robocup_ssl.cpp
@@ -173,6 +176,8 @@ qt4_wrap_cpp (MOC_SRCS
 	src/app/plugins/visionplugin.h
 	src/app/plugins/plugin_colorcalib.h
 	src/app/plugins/plugin_stats.h
+	src/app/plugins/PluginAlternateColorDetection.h
+
 	src/app/stacks/multistack_robocup_ssl.h
 
 	${OPTIONAL_HEADERS}

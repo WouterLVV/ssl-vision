@@ -19,6 +19,7 @@
 */
 //========================================================================
 #include "plugin_visualize.h"
+#include "PluginAlternateColorDetection.h"
 #include <sobel.h>
 
 namespace {
@@ -33,6 +34,8 @@ PluginVisualize::PluginVisualize(
   _v_enabled = new VarBool("enable", true);
   _v_image = new VarBool("image", true);
   _v_greyscale = new VarBool("greyscale", false);
+  _v_mask = new VarBool("mask", false);
+  _v_alt_threshold = new VarBool("alt_threshold", false);
   _v_thresholded = new VarBool("thresholded", false);
   _v_blobs = new VarBool("blobs", false);
   _v_camera_calibration = new VarBool("camera calibration", false);
@@ -45,6 +48,8 @@ PluginVisualize::PluginVisualize(
   _settings->addChild(_v_enabled);
   _settings->addChild(_v_image);
   _settings->addChild(_v_greyscale);
+    _settings->addChild(_v_mask);
+    _settings->addChild(_v_alt_threshold);
   _settings->addChild(_v_thresholded);
   _settings->addChild(_v_blobs);
   _settings->addChild(_v_camera_calibration);
@@ -102,6 +107,77 @@ void PluginVisualize::DrawCameraImage(
       vis_ptr[i] = color;
     }
   }
+}
+
+void PluginVisualize::DrawMaskedImage(
+        FrameData* data, VisualizationFrame* vis_frame) {
+    p_dist* converted = (p_dist*)data->map.get("acd_converted");
+    int size = data->video.getNumPixels();
+    rgb * vis_ptr = vis_frame->data.getPixelData();
+    for (int i = 0; i < size; i++) {
+        if (converted[i].v < converted[i].vavg) {
+            vis_ptr[i].r = 0;
+            vis_ptr[i].g = 0;
+            vis_ptr[i].b = 0;
+        }
+    }
+
+}
+
+void PluginVisualize::DrawAltThresholdedImage(
+        FrameData* data, VisualizationFrame* vis_frame) {
+  vector<blob> * blobs = (vector<blob>*)data->map.get("acd_blobs");
+  rgb green;
+  rgb purple;
+  rgb yellow;
+  rgb blue;
+    rgb white;
+
+  green.b = green.r = 0;
+  green.g = 255;
+
+  purple.b = purple.r = 255;
+  purple.g = 0;
+
+    yellow.r = yellow.g = 255;
+    yellow.b = 0;
+
+    blue.g = blue.r = 0;
+    blue.b = 255;
+
+    rgb * vis_ptr = vis_frame->data.getPixelData();
+
+    for (const auto &bl : *blobs) {
+        rgb color;
+        switch (bl.color) {
+            case 1:
+                color = green;
+                break;
+            case 2:
+                color = purple;
+                break;
+            case 3:
+                color = yellow;
+                break;
+            case 4:
+                color = blue;
+                break;
+
+            default:
+                continue;
+
+        }
+
+
+        for (int i : bl.pixels) {
+            rgb tmp = vis_ptr[i];
+            tmp.r = color.r;
+            tmp.g = color.g;
+            tmp.b = color.b;
+          vis_ptr[i] = tmp;
+        }
+    }
+
 }
 
 void PluginVisualize::DrawThresholdedImage(
@@ -387,6 +463,14 @@ ProcessResult PluginVisualize::process(
     } else {
       vis_frame->data.fillBlack();
     }
+
+      if (_v_mask->getBool()) {
+          DrawMaskedImage(data,vis_frame);
+      }
+
+      if (_v_alt_threshold->getBool()) {
+          DrawAltThresholdedImage(data, vis_frame);
+      }
 
     // Draw color-thresholded image.
     if (_v_thresholded->getBool()) {

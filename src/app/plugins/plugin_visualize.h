@@ -63,6 +63,9 @@ protected:
   VarBool * _v_complete_sobel;
   VarBool * _v_detected_edges;
 
+  VarBool *_v_mask;
+  VarBool *_v_alt_threshold;
+
   const CameraParameters& camera_parameters;
   const RoboCupField& real_field;
 
@@ -112,6 +115,10 @@ public:
    virtual ProcessResult process(FrameData * data, RenderOptions * options);
    virtual VarList * getSettings();
    virtual string getName();
+
+    void DrawAltThresholdedImage(FrameData *data, VisualizationFrame *vis_frame);
+
+    void DrawMaskedImage(FrameData *data, VisualizationFrame *vis_frame);
 };
 
 #endif

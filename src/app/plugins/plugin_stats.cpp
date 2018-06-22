@@ -11,6 +11,7 @@ PluginStats::PluginStats(FrameBuffer *_buffer) : VisionPlugin(_buffer) {
 }
 
 ProcessResult PluginStats::process(FrameData *data, RenderOptions *options) {
+    (void)options;
     SSL_DetectionFrame * detection_frame = 0;
 
     detection_frame=(SSL_DetectionFrame *)data->map.get("ssl_detection_frame");

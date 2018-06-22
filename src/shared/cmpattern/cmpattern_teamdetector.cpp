@@ -209,7 +209,7 @@ void TeamDetector::findRobotsByTeamMarkerOnly(::google::protobuf::RepeatedPtrFie
     //TODO: add confidence masking:
     //float conf = det.mask.get(reg->cen_x,reg->cen_y);
     double conf=1.0;
-    if (field_filter.isInFieldOrPlayableBoundary(reg_center) &&  ((_histogram_enable==false) || checkHistogram(reg,image)==true)) {
+    if (field_filter.isInFieldOrPlayableBoundary(reg_center)) {// &&  ((_histogram_enable==false) || checkHistogram(reg,image)==true)) {
       double area = getRegionArea(reg,_robot_height);
       double area_err = fabs(area - _center_marker_area_mean);
 

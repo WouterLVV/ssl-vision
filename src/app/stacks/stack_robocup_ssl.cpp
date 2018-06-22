@@ -70,15 +70,17 @@ StackRoboCupSSL::StackRoboCupSSL(
 
   //initialize the blob finder
   //we don't expect more than 10k blobs per image
-  stack.push_back(new PluginFindBlobs(_fb,lut_yuv, 10000));
+  //stack.push_back(new PluginFindBlobs(_fb,lut_yuv, 10000));
+
+  stack.push_back(new PluginAlternateColorDetection(_fb, lut_yuv));
 
   stack.push_back(new PluginDetectRobots(_fb,lut_yuv,*camera_parameters,*global_field,global_team_selector_blue,global_team_selector_yellow));
 
   stack.push_back(new PluginDetectBalls(_fb,lut_yuv,*camera_parameters,*global_field,global_ball_settings));
 
-  stack.push_back(new PluginAlternateColorDetection(_fb));
 
-  stack.push_back(new PluginStats(_fb));
+
+  //stack.push_back(new PluginStats(_fb));
 
   stack.push_back(new PluginSSLNetworkOutput(
       _fb,
