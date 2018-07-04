@@ -66,11 +66,11 @@ StackRoboCupSSL::StackRoboCupSSL(
 
   //initialize the runlength encoder...
   //we don't expect more than 50k runs per image
-  stack.push_back(new PluginRunlengthEncode(_fb,50000));
+  stack.push_back(new PluginRunlengthEncode(_fb,200000));
 
   //initialize the blob finder
   //we don't expect more than 10k blobs per image
-  //stack.push_back(new PluginFindBlobs(_fb,lut_yuv, 10000));
+  stack.push_back(new PluginFindBlobs(_fb,lut_yuv, 20000));
 
   stack.push_back(new PluginAlternateColorDetection(_fb, lut_yuv));
 
@@ -78,9 +78,7 @@ StackRoboCupSSL::StackRoboCupSSL(
 
   stack.push_back(new PluginDetectBalls(_fb,lut_yuv,*camera_parameters,*global_field,global_ball_settings));
 
-
-
-  //stack.push_back(new PluginStats(_fb));
+  stack.push_back(new PluginStats(_fb));
 
   stack.push_back(new PluginSSLNetworkOutput(
       _fb,

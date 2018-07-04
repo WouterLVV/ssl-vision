@@ -5,52 +5,76 @@
 #ifndef SSL_VISION_PLUGINSTATS_H
 #define SSL_VISION_PLUGINSTATS_H
 
+#include <VarNotifier.h>
 #include "visionplugin.h"
 
 class PluginStats;
 
-class PosRotId {
+class BotStats {
 public:
-    PosRotId(int id, double x, double y, double theta) {
-        this->id    = id;
-        this->x     = x;
-        this->y     = y;
-        this->theta = theta;
-    }
-
-    int    getID()      { return id;    };
-    double getX()       { return x;     };
-    double getY()       { return y;     };
-    double getTheta()   { return theta; };
-    bool   isValid()    { return valid; };
-
-
-    void   setValid(bool b) { valid = b; };
-
-private:
-    bool valid;
+    BotStats(){};
+    float x, y;
+    int team; // 0 = blue, 1 = yellow
     int id;
-    double x,y,theta;
 };
 
-class RobotHistoryElement {
+class FrameStats {
 public:
-    int robotId;
-    int seenTotal;
-    std::vector<PosRotId> posrot;
+    FrameStats(){};
+
+    int frameid = -1;
+
+    int robottotal = 0;
+    int yellowbots = 0;
+    int bluebots = 0;
+
+    unordered_map<string, double> timings;
+    unordered_map<int, BotStats> bots;
 
 };
+
+class Stats {
+public:
+    Stats(){};
+
+    int framecount = 0;
+    vector<FrameStats> frames;
+    unordered_map<string, double> cumulative_timings;
+    unordered_map<int, int> botcountsblue;
+    unordered_map<int, int> botcountsyellow;
+
+    void reset() {
+        framecount = 0;
+        frames.clear();
+        cumulative_timings.clear();
+        botcountsblue.clear();
+        botcountsyellow.clear();
+    }
+};
+
+
+
 
 
 class PluginStats : public VisionPlugin {
 protected:
-    std::vector<RobotHistoryElement> bluestats;
-    std::vector<RobotHistoryElement> yellowstats;
+    VarList* _settings;
+    VarNotifier _notifier;
+
+    string title;
+
+    bool enabled;
+    bool written;
+
+    Stats stats;
+    int target_frames = 0;
+
 public:
     PluginStats(FrameBuffer *_buffer);
 
-
     ProcessResult process(FrameData *data, RenderOptions *options) override;
+
+    VarList *getSettings() override;
 };
 
 

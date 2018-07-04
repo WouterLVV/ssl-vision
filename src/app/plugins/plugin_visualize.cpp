@@ -112,6 +112,7 @@ void PluginVisualize::DrawCameraImage(
 void PluginVisualize::DrawMaskedImage(
         FrameData* data, VisualizationFrame* vis_frame) {
     p_dist* converted = (p_dist*)data->map.get("acd_converted");
+  if (converted == 0) return;
     int size = data->video.getNumPixels();
     rgb * vis_ptr = vis_frame->data.getPixelData();
     for (int i = 0; i < size; i++) {
@@ -127,6 +128,7 @@ void PluginVisualize::DrawMaskedImage(
 void PluginVisualize::DrawAltThresholdedImage(
         FrameData* data, VisualizationFrame* vis_frame) {
   vector<blob> * blobs = (vector<blob>*)data->map.get("acd_blobs");
+  if (blobs == 0) return;
   rgb green;
   rgb purple;
   rgb yellow;

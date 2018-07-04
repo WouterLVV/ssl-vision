@@ -18,6 +18,7 @@
   \author  Stefan Zickler, (C) 2008
 */
 //========================================================================
+#include <unordered_map>
 #include "visionstack.h"
 
 VisionStack::VisionStack(string _name, RenderOptions * _opts) {
@@ -46,6 +47,11 @@ string VisionStack::getSettingsFileName() {
 }
 
 void VisionStack::process(FrameData * data) {
+  unordered_map<string, double>* timings;
+  if ((timings = (unordered_map<string, double>*)data->map.get("timings")) == 0) {
+    timings = new unordered_map<string, double>;
+    data->map.insert("timings", timings);
+  }
   double a=0.0;
   double b=0.0;
   unsigned int n=stack.size();
@@ -60,12 +66,14 @@ void VisionStack::process(FrameData * data) {
     p->process(data,opts);
     b=GetTimeSec();
     p->setTimeProcessing(b-a);
+    (*timings)[p->getName()] = b-a;
     total+=(p->getTimeProcessing());
     if (show_timing) {
       printf("Plugin %s: %fms\n",p->getName().c_str(),  p->getTimeProcessing() * 1000.0);
     }
     p->unlock();
   }
+  (*timings)["TIME_TOTAL"] = total;
   if (show_timing) printf("Total time: %fms\n",total * 1000.0);
   //counter_proc+=1.0;
 }

@@ -9,23 +9,56 @@
 
 PluginAlternateColorDetection::PluginAlternateColorDetection(FrameBuffer *_buffer, YUVLUT* lut) : VisionPlugin(_buffer) {
     _lut = lut;
+
+    hlut = new uchar[5*181];
+
+    _settings = new VarList("Alt Detection");
+    _settings->addChild(new VarBool("Enabled", true));
+
+    VarList* _threshsettings = new VarList("Threshold settings");
+    _threshsettings->addChild(new VarInt("Horizontal regions", 2, 1, 15));
+    _threshsettings->addChild(new VarInt("Vertical regions", 2, 1, 15));
+    _threshsettings->addChild(new VarInt("avg radius", 4, 0, 127));
+
+    VarList* _segsettings = new VarList("Segmentation settings");
+    _segsettings->addChild(new VarInt("Min size", 30, 0));
+    _segsettings->addChild(new VarInt("Max size", 30, 0));
+    _segsettings->addChild(new VarInt("Max H dist", 80, 0, 255));
+    _segsettings->addChild(new VarInt("Max V dist", 30, 0, 255));
+
+    VarList* _lutsettings = new VarList("HLUT settings");
+    _lutsettings->addChild(new VarInt("yellow center", 30, 0, 179));
+    _lutsettings->addChild(new VarInt("yellow std_dev", 20, 0, 179));
+    _lutsettings->addChild(new VarInt("blue center", 120, 0, 179));
+    _lutsettings->addChild(new VarInt("blue std_dev", 20, 0, 179));
+    _lutsettings->addChild(new VarInt("green center", 60, 0, 179));
+    _lutsettings->addChild(new VarInt("green std_dev", 20, 0, 179));
+    _lutsettings->addChild(new VarInt("pink center", 0, 0, 179));
+    _lutsettings->addChild(new VarInt("pink std_dev", 20, 0, 179));
+    
+    _settings->addChild(_threshsettings);
+    _settings->addChild(_segsettings);    
+    _settings->addChild(_lutsettings);
+
+    _notifier.addRecursive(_settings);
+
+    buildHlut(hlut);
+
+
+}
+
+VarList *PluginAlternateColorDetection::getSettings() {
+    return _settings;
 }
 
 
 
-int greencenter = 60;
-int greendev = 20;
-int pinkcenter = 15;
-int pinkdev = 20;
-int yellowcenter = 30;
-int yellowdev = 20;
-int bluecenter = 120;
-int bluedev = 20;
-int blackcenter = 0;
-int blackdev = 50;
-int a = 255;
 
-uchar probgaussianH(int a, int b, int c, int x) {
+
+
+
+
+uchar PluginAlternateColorDetection::probgaussianH(int a, int b, int c, int x) {
     double da = a, db = b, dc = c, dx = x;
     uchar res1 = (uchar)round(da*exp(-(pow(dx-db,2)/(2*pow(dc,2)))));
     uchar res2 = (uchar)round(da*exp(-(pow(dx-(db-180),2)/(2*pow(dc,2)))));
@@ -33,19 +66,19 @@ uchar probgaussianH(int a, int b, int c, int x) {
     return max(res1,max(res2,res3));
 }
 
-uchar probgaussianV(int a, int b, int c, int x) {
+uchar PluginAlternateColorDetection::probgaussianV(int a, int b, int c, int x) {
     double da = a, db = b, dc = c, dx = x;
     uchar res1 = (uchar)round(da*exp(-(pow(dx-db,2)/(2*pow(dc,2)))));
     return res1;
 }
 
-void buildHlut(uchar* lut) {
+void PluginAlternateColorDetection::buildHlut(uchar* lut) {
     for (int h = 0; h < 180; h++) {
         int j = 5*h;
-        lut[j]  = probgaussianH(a, greencenter, greendev, h);
-        lut[j+1] = probgaussianH(a, pinkcenter, pinkdev, h);
-        lut[j+2] = probgaussianH(a, yellowcenter, yellowdev, h);
-        lut[j+3] = probgaussianH(a, bluecenter, bluedev, h);
+        lut[j]  = probgaussianH(255, greencenter, greendev, h);
+        lut[j+1] = probgaussianH(255, pinkcenter, pinkdev, h);
+        lut[j+2] = probgaussianH(255, yellowcenter, yellowdev, h);
+        lut[j+3] = probgaussianH(255, bluecenter, bluedev, h);
         lut[j+4] = max(lut[j], max(lut[j+1], max(lut[j+2], lut[j+3])));
     }
     lut[180*5] = 0;
@@ -54,6 +87,17 @@ void buildHlut(uchar* lut) {
     lut[180*5+3] = 0;
     lut[180*5+4] = 0;
 
+}
+
+void printHlut(uchar* lut) {
+    fflush(stdout);
+    for (int i = 2; i < 3; i++) {
+        fprintf(stdout,  "--------------------------------------------\n%d:\n", i);
+        for (int j = i; j < 181*5; j+=5) {
+            fprintf(stdout, "%03d: %03d\n", j/5, lut[j]);
+        }
+    }
+    fflush(stdout);
 }
 
 //void testgaussian() {
@@ -69,10 +113,7 @@ void buildHlut(uchar* lut) {
 //    }
 //}
 
-int hor_regions = 3;
-int vert_regions = 3;
-int num_regions = hor_regions * vert_regions;
-int avgradius = 3;
+
 
 p_dist* PluginAlternateColorDetection::processHSV(cv::Mat img_hsv, uchar* hlut, p_dist* converted) {
     uchar* hsvdata = (img_hsv).data;
@@ -98,6 +139,15 @@ p_dist* PluginAlternateColorDetection::processHSV(cv::Mat img_hsv, uchar* hlut, 
 
     for (int i = 0; i < num_regions; i++) {
 
+//        // 90% method
+//        int counter = 0;
+//        unsigned int j = 0;
+//        for (; j < 256-1; j++) {
+//            counter += hist[i][j];
+//            if (counter >= reg_width*reg_height*0.9) break;
+//        }
+//        avgv[i] = j;
+
 
         // 5-point average
         int currentavg = 0;
@@ -112,6 +162,7 @@ p_dist* PluginAlternateColorDetection::processHSV(cv::Mat img_hsv, uchar* hlut, 
         }
 
 
+
         int highestindex = 0;
         for (int j = 1; j < 256-2*avgradius; j++) {
             if (tmpavg[i][j] > tmpavg[i][highestindex]) {
@@ -124,9 +175,10 @@ p_dist* PluginAlternateColorDetection::processHSV(cv::Mat img_hsv, uchar* hlut, 
         for (int k = 0; k < stableradius; k++){
             lastpoints[k] = -1000000;
         }
+
         for (; j < 256-(2*avgradius); j++) {
-            int comparepoint = lastpoints[j%stableradius] = tmpavg[i][j];
-            if (comparepoint > avgv[highestindex]/2) continue;
+            int comparepoint = (lastpoints[j%stableradius] = tmpavg[i][j]);
+            if (comparepoint > (tmpavg[i][highestindex])/2) continue;
             bool isstable = true;
 
             for (int k = 0; k < stableradius; k++){
@@ -167,12 +219,14 @@ p_dist* PluginAlternateColorDetection::processHSV(cv::Mat img_hsv, uchar* hlut, 
 //
 //        }
 
-        converted[j].colors = hlut+hi;
+
         converted[j].vavg = avgv[(((i/3)/cols)/reg_height)*hor_regions+((i/3)%cols)/reg_width];
-        converted[j].used = false; //converted[j].colors[4] < 100 || converted[j].v < converted[j].vavg;
+        converted[j].used = converted[j].v < converted[j].vavg; // converted[j].colors[4] < 100 ||
         if (converted[j].used) continue;
-        converted[j].black = probgaussianV(a, blackcenter, blackdev, v);
-        converted[j].white = 255-s;
+        converted[j].colors = hlut+hi;
+
+        //converted[j].black = probgaussianV(255, blackcenter, blackdev, v);
+        //converted[j].white = 255-s;
 
 
 //        converted[j].green = hlut[hi];
@@ -186,10 +240,9 @@ p_dist* PluginAlternateColorDetection::processHSV(cv::Mat img_hsv, uchar* hlut, 
     return converted;
 }
 
-uchar maxHdist = 30;
-uchar maxVdist = 50;
 
-blob makeblob(p_dist converted[], int pixel, int cols, int size) {
+
+blob PluginAlternateColorDetection::makeblob(p_dist converted[], int pixel, int cols, int size) {
     blob result;
     unsigned long totalv = converted[pixel].v;
     double hsin = sin(((double)converted[pixel].h)*M_PI/90), hcos = cos(((double)converted[pixel].h)*M_PI/90);
@@ -212,7 +265,7 @@ blob makeblob(p_dist converted[], int pixel, int cols, int size) {
         //fprintf(stdout, "avgh: %d\n", avgh);
 
         if (cp->s != 0) {
-            if (min(abs(avgh - (signed int)cp->h), abs(avgh - (signed int)cp->h + (cp->h < 90 ? 180 : -180))) > maxHdist || abs(avgv - (signed int)cp->v) > maxVdist)  {
+            if (min(abs(avgh - (signed int)cp->h), abs(avgh - ((signed int)cp->h + (cp->h < 90 ? 180 : -180)))) > maxHdist || abs(avgv - (signed int)cp->v) > maxVdist)  {
                 //failcount++;
                 continue;
             }
@@ -231,8 +284,8 @@ blob makeblob(p_dist converted[], int pixel, int cols, int size) {
         if (current%cols != cols-1 && !converted[current+1].used) {
             q.push(current+1);
         }
-        if (current > cols) {
-            q.push(current-cols && !converted[current-cols].used);
+        if (current > cols && !converted[current-cols].used) {
+            q.push(current-cols);
         }
         if (current + cols < size && !converted[current+cols].used) {
             q.push(current+cols);
@@ -248,10 +301,9 @@ blob makeblob(p_dist converted[], int pixel, int cols, int size) {
 
 
 
-int minpixels = 20;
-int maxpixels = 300;
 
-void blobdetection(p_dist* converted, int cols, int size, vector<blob> * blobs) {
+
+void PluginAlternateColorDetection::blobdetection(p_dist* converted, int cols, int size, vector<blob> * blobs) {
     //vector<blob> blobs;
     for (int i = 0; i < size; i++) {
         if (converted[i].colors != 0 && !converted[i].used) {
@@ -275,6 +327,10 @@ void blobdetection(p_dist* converted, int cols, int size, vector<blob> * blobs) 
                     if (y < b.min_y) b.min_y = y;
                     b.cen_x += x;
                     b.cen_y += y;
+                    green  += converted[px].colors[0] * pow(converted[px].s, 2);
+                    purple += converted[px].colors[1] * pow(converted[px].s, 2);
+                    yellow += converted[px].colors[2] * pow(converted[px].s, 2);
+                    blue   += converted[px].colors[3] * pow(converted[px].s, 2);
                 }
 
                 b.cen_x /= b.size;
@@ -288,17 +344,19 @@ void blobdetection(p_dist* converted, int cols, int size, vector<blob> * blobs) 
                 double efficiency = ((double)b.size/(double)area);
                 if (efficiency < 0.4) continue;
 
-                for (int k = b.min_y; k <= b.max_y; k++) {
-                    for (int l = b.min_x; l <= b.min_x; l++) {
-                        int px = k * cols + l;
-                        if (converted[px].s > 0 && converted[px].v > converted[px].vavg*0.6) {
-                            green  += converted[px].colors[0] * pow(converted[px].s, 2);
-                            purple += converted[px].colors[1] * pow(converted[px].s, 2);
-                            yellow += converted[px].colors[2] * pow(converted[px].s, 2);
-                            blue   += converted[px].colors[3] * pow(converted[px].s, 2);
-                        }
-                    }
-                }
+//                for (int k = b.min_y; k <= b.max_y; k++) {
+//                    for (int l = b.min_x; l <= b.min_x; l++) {
+//                        int px = k * cols + l;
+//                        if (converted[px].s > 0 && converted[px].v > converted[px].vavg*0.6) {
+//                            green  += converted[px].colors[0] * pow(converted[px].s, 2);
+//                            purple += converted[px].colors[1] * pow(converted[px].s, 2);
+//                            yellow += converted[px].colors[2] * pow(converted[px].s, 2);
+//                            blue   += converted[px].colors[3] * pow(converted[px].s, 2);
+//                        }
+//                    }
+//                }
+
+
 
 
                 if (green >= purple && green >= yellow && green >= blue ) {
@@ -326,6 +384,38 @@ void blobdetection(p_dist* converted, int cols, int size, vector<blob> * blobs) 
 ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOptions *options) {
     (void)options;
 
+    if (_notifier.hasChanged()) {
+        enabled = ((VarBool*)_settings->findChild("Enabled"))->getBool();
+
+        VarList* _threshsettings = (VarList*)_settings->findChild("Threshold settings");
+        hor_regions     = ((VarInt*)_threshsettings->findChild("Horizontal regions"))->getInt();
+        vert_regions    = ((VarInt*)_threshsettings->findChild("Vertical regions"))->getInt();
+        avgradius       = ((VarInt*)_threshsettings->findChild("avg radius"))->getInt();
+        num_regions = hor_regions*vert_regions;
+
+        VarList* _segsettings = (VarList*)_settings->findChild("Segmentation settings");
+        minpixels       = ((VarInt*)_segsettings->findChild("Min size"))->getInt();
+        maxpixels       = ((VarInt*)_segsettings->findChild("Max size"))->getInt();
+        maxHdist        = ((VarInt*)_segsettings->findChild("Max H dist"))->getInt();
+        maxVdist        = ((VarInt*)_segsettings->findChild("Max V dist"))->getInt();
+
+        VarList* _lutsettings = (VarList*)_settings->findChild("HLUT settings");
+        yellowcenter    = ((VarInt*)_lutsettings->findChild("yellow center"))->getInt();
+        yellowdev       = ((VarInt*)_lutsettings->findChild("yellow std_dev"))->getInt();
+        bluecenter      = ((VarInt*)_lutsettings->findChild("blue center"))->getInt();
+        bluedev         = ((VarInt*)_lutsettings->findChild("blue std_dev"))->getInt();
+        greencenter     = ((VarInt*)_lutsettings->findChild("green center"))->getInt();
+        greendev        = ((VarInt*)_lutsettings->findChild("green std_dev"))->getInt();
+        pinkcenter      = ((VarInt*)_lutsettings->findChild("pink center"))->getInt();
+        pinkdev         = ((VarInt*)_lutsettings->findChild("pink std_dev"))->getInt();
+        buildHlut(hlut);
+
+    }
+    if (!enabled) return ProcessingFailed;
+    double time_init = 0.0, time_convert = 0.0, time_threshold = 0.0, time_classify = 0.0;
+
+    time_init = GetTimeSec();
+
 //    cv::Mat* img_hsv;
 //    if ((img_hsv=(cv::Mat *)data->map.get("cmv_threshold")) == 0) {
 //        img_hsv = new cv::Mat(data->video.getHeight(),
@@ -335,13 +425,12 @@ ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOpti
 //        data->map.insert("cmv_threshold",img_hsv);
 //    }
 
-    uchar* hlut;
-    if ((hlut = (uchar*)data->map.get("acd_hlut")) == 0) {
-        hlut = new uchar[5*181];
-        buildHlut(hlut);
-        data->map.insert("acd_hlut", hlut);
-    }
 
+    unordered_map<string, double>* timings;
+    if ((timings = (unordered_map<string, double>*)data->map.get("timings")) == 0) {
+        timings = new unordered_map<string, double>;
+        data->map.insert("timings", timings);
+    }
     p_dist* converted;
     if ((converted = (p_dist*)data->map.get("acd_converted")) == 0) {
         converted = new p_dist[data->video.getNumPixels()];
@@ -357,7 +446,7 @@ ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOpti
 
     CMVision::RegionList * reglist;
     if ((reglist=(CMVision::RegionList *)data->map.get("cmv_reglist")) == 0) {
-        reglist=(CMVision::RegionList *)data->map.insert("cmv_reglist",new CMVision::RegionList(1000));
+        reglist=(CMVision::RegionList *)data->map.insert("cmv_reglist",new CMVision::RegionList(10000));
     }
 
 //    CMVision::ColorRegionList * crl;
@@ -373,6 +462,7 @@ ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOpti
 
 
 
+
     if (data->video.getColorFormat()==COLOR_YUV422_UYVY) {
         fprintf(stderr,"This shit needs RGB8 as input image, but found: %s\n",Colors::colorFormatToString(data->video.getColorFormat()).c_str());
         return ProcessingFailed;
@@ -385,15 +475,22 @@ ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOpti
                 data->video.getWidth(),
                 CV_8UC3,
                 data->video.getData());
+        //cv::GaussianBlur(img, img, cv::Size(), 1);
         cv::Mat img_hsv = img.clone();
-        fprintf(stdout, "converting...\n");
-        fflush(stdout);
+        //printHlut(hlut);
+        //fprintf(stdout, "hlut ptr: %p\n", hlut);
+        //fprintf(stdout, "yellowdev: %d\n\n", yellowdev);
+
+//        fprintf(stdout, "converting...\n");
+//        fflush(stdout);
         cv::cvtColor(img, img_hsv, CV_RGB2HSV);
-        fprintf(stdout, "processing...\n");
-        fflush(stdout);
+//        fprintf(stdout, "processing...\n");
+//        fflush(stdout);
         //uchar hlut[4*180];
+        time_convert = GetTimeSec();
         int rows = (img_hsv).rows, cols = (img_hsv).cols, size = rows*cols;
         processHSV(img_hsv, hlut, converted);
+        time_threshold = GetTimeSec();
         blobs->clear();
         blobdetection(converted, cols, size, blobs);
 
@@ -455,6 +552,7 @@ ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOpti
 
         int max_area = CMVision::RegionProcessing::separateRegions(colorlist, reglist, minpixels);
         CMVision::RegionProcessing::sortRegions(colorlist,max_area);
+        time_classify = GetTimeSec();
 
 
 //        for (int k = 0; k < colorlist->getNumColorRegions(); k++) {
@@ -467,9 +565,18 @@ ProcessResult PluginAlternateColorDetection::process(FrameData *data, RenderOpti
 //            fflush(stdout);
 //        }
 
+        (*timings)[str_time_thresh] = time_threshold - time_init;
+        (*timings)[str_time_class]  = time_classify - time_threshold;
+
+
         return ProcessingOk;
     } else {
         fprintf(stderr,"This shit needs RGB8 as input image, but found: %s\n",Colors::colorFormatToString(data->video.getColorFormat()).c_str());
         return ProcessingFailed;
     }
 }
+
+string PluginAlternateColorDetection::getName() {
+    return "Alternative Detection";
+}
+
